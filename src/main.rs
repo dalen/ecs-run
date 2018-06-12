@@ -46,7 +46,10 @@ fn main() {
                 .expect("No log group configured");
             let log_region = log_options
                 .get("awslogs-region")
-                .expect("No log group configured");
+                .expect("No log region configured");
+            let log_prefix = log_options
+                .get("awslogs-stream-prefix")
+                .expect("No log stream prefix configured");
 
             let task = run_task(
                 &ecs_client,
@@ -54,15 +57,6 @@ fn main() {
                 &task_definition,
                 &service,
             );
-
-            loop {
-                let task_status = fetch_task(&ecs_client, &cluster.to_string(), &task);
-                if task_status.stopped_at != None {
-                    break;
-                }
-                thread::sleep(time::Duration::from_millis(500));
-            }
-
             let task_id = &task.clone()
                 .task_arn
                 .unwrap()
@@ -70,8 +64,21 @@ fn main() {
                 .next()
                 .unwrap()
                 .to_string();
+
+            println!("Started task {}", &task_id);
+            loop {
+                let task_status = fetch_task(&ecs_client, &cluster.to_string(), &task);
+                if task_status.stopped_at != None {
+                    break;
+                }
+                thread::sleep(time::Duration::from_millis(500));
+            }
+            println!("Task finished, fetching logs");
+
+            let log_stream_name =
+                format!("{}/{}/{}", &log_prefix, &container.name.unwrap(), &task_id);
             let logs_client = CloudWatchLogsClient::simple(Region::from_str(&log_region).unwrap());
-            let logs = fetch_logs(&logs_client, &log_group, &task_id);
+            let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
 
             println!("logs: {:?}", &logs);
             println!("task: {:?}", &task);
@@ -88,6 +95,8 @@ fn fetch_logs(
     log_group_name: &String,
     log_stream_name: &String,
 ) -> rusoto_logs::GetLogEventsResponse {
+    println!("log_group: {}", &log_group_name);
+    println!("log_stream: {}", &log_stream_name);
     let result = client
         .get_log_events(&rusoto_logs::GetLogEventsRequest {
             log_group_name: log_group_name.clone(),
