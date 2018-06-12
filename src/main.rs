@@ -14,6 +14,7 @@ fn main() {
     let matches = App::new("ecs-run")
         .version("0.1.0")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
+        .setting(clap::AppSettings::TrailingVarArg)
         .arg(
             Arg::with_name("CLUSTER")
                 .help("Name of cluster to run in")
@@ -26,10 +27,17 @@ fn main() {
                 .required(true)
                 .index(2),
         )
+        .arg(
+            Arg::with_name("COMMAND")
+                .help("Command to run")
+                .required(true)
+                .multiple(true),
+        )
         .get_matches();
 
     let cluster = matches.value_of("CLUSTER").unwrap();
     let service = matches.value_of("SERVICE").unwrap();
+    let command = matches.values_of("COMMAND").unwrap();
 
     let ecs_client = EcsClient::simple(Region::default());
     match fetch_service(&ecs_client, &cluster, &service) {
@@ -56,6 +64,7 @@ fn main() {
                 &cluster.to_string(),
                 &task_definition,
                 &service,
+                &command.map(|s| s.to_string()).collect(),
             );
             let task_id = &task.clone()
                 .task_arn
@@ -80,8 +89,12 @@ fn main() {
             let logs_client = CloudWatchLogsClient::simple(Region::from_str(&log_region).unwrap());
             let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
 
-            println!("logs: {:?}", &logs);
-            println!("task: {:?}", &task);
+            for log in &logs.clone().events.unwrap() {
+                match &log.message {
+                    Some(message) => println!("{}", &message),
+                    None => (),
+                }
+            }
         }
         Err(error) => {
             println!("Error: {:?}", error);
@@ -95,8 +108,6 @@ fn fetch_logs(
     log_group_name: &String,
     log_stream_name: &String,
 ) -> rusoto_logs::GetLogEventsResponse {
-    println!("log_group: {}", &log_group_name);
-    println!("log_stream: {}", &log_stream_name);
     let result = client
         .get_log_events(&rusoto_logs::GetLogEventsRequest {
             log_group_name: log_group_name.clone(),
@@ -131,6 +142,7 @@ fn run_task(
     cluster: &String,
     task_definition: &rusoto_ecs::TaskDefinition,
     service: &rusoto_ecs::Service,
+    command: &Vec<String>,
 ) -> rusoto_ecs::Task {
     let service = service.clone();
     let container = get_container(&task_definition);
@@ -149,7 +161,7 @@ fn run_task(
             overrides: Some(rusoto_ecs::TaskOverride {
                 container_overrides: Some(vec![rusoto_ecs::ContainerOverride {
                     name: container.name.clone(),
-                    command: Some(vec!["rake".to_string(), "-t".to_string()]),
+                    command: Some(command.clone()),
                     ..Default::default()
                 }]),
                 ..Default::default()
