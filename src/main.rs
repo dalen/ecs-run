@@ -86,13 +86,26 @@ fn main() {
                 .unwrap()
                 .to_string();
 
+            let mut previous_status = task.clone();
             println!("Started task {}", &task_id);
             loop {
                 let task_status = fetch_task(&ecs_client, &cluster.to_string(), &task);
+
                 if task_status.stopped_at != None {
                     break;
                 }
+
+                // Check if status has changed
+                match (&task_status.last_status, &previous_status.last_status) {
+                    (Some(ref old), Some(ref new)) => {
+                        if old != new {
+                            println!("Status: {}", new);
+                        }
+                    }
+                    _ => (),
+                }
                 thread::sleep(time::Duration::from_millis(500));
+                previous_status = task_status;
             }
             println!("Task finished, fetching logs");
 
