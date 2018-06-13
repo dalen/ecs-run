@@ -1,6 +1,9 @@
 # ecs-run
 
-Run a task on AWS ECS and stream output
+Run a task on AWS ECS and stream output.
+
+As input this takes an existing cluster and service and runs a task with the same subnets and execution role, but with a different command.
+This can for example be used to run a rake task on a Rails service in ECS.
 
 ## Usage
 
@@ -23,3 +26,7 @@ ARGS:
     <SERVICE>       Service to base task on
     <COMMAND>...    Command to run
 ```
+
+## Related work
+
+- [ecs-run-task](https://github.com/buildkite/ecs-run-task) - Similar, but creates a new task definition instead of reusing the one from an existing service.
