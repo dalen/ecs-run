@@ -16,6 +16,13 @@ fn main() {
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
+            Arg::with_name("CONTAINER")
+                .help("Name of container to run command in")
+                .long("name")
+                .short("n")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("CLUSTER")
                 .help("Name of cluster to run in")
                 .required(true)
@@ -46,9 +53,14 @@ fn main() {
                 .unwrap()
                 .task_definition
                 .unwrap();
-            let container = get_container(&task_definition);
+            let container = get_container(&task_definition, matches.value_of("CONTAINER"));
 
-            let log_options = container.log_configuration.unwrap().options.unwrap();
+            let log_options = container
+                .clone()
+                .log_configuration
+                .unwrap()
+                .options
+                .unwrap();
             let log_group = log_options
                 .get("awslogs-group")
                 .expect("No log group configured");
@@ -62,14 +74,14 @@ fn main() {
             let task = run_task(
                 &ecs_client,
                 &cluster.to_string(),
-                &task_definition,
                 &service,
-                &command.map(|s| s.to_string()).collect(),
+                &command.map(|s| s.to_string()).collect::<Vec<_>>(),
+                &container,
             );
             let task_id = &task.clone()
                 .task_arn
                 .unwrap()
-                .rsplitn(2, "/")
+                .rsplitn(2, '/')
                 .next()
                 .unwrap()
                 .to_string();
@@ -105,47 +117,63 @@ fn main() {
 // TODO: loop if there are more logs
 fn fetch_logs(
     client: &rusoto_logs::CloudWatchLogsClient,
-    log_group_name: &String,
-    log_stream_name: &String,
+    log_group_name: &str,
+    log_stream_name: &str,
 ) -> rusoto_logs::GetLogEventsResponse {
     let result = client
         .get_log_events(&rusoto_logs::GetLogEventsRequest {
-            log_group_name: log_group_name.clone(),
-            log_stream_name: log_stream_name.clone(),
+            log_group_name: log_group_name.to_string(),
+            log_stream_name: log_stream_name.to_string(),
             ..Default::default()
         })
         .sync();
     result.unwrap()
 }
 
-fn fetch_task(client: &EcsClient, cluster: &String, task: &rusoto_ecs::Task) -> rusoto_ecs::Task {
+fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rusoto_ecs::Task {
     let result = client
         .describe_tasks(&rusoto_ecs::DescribeTasksRequest {
-            cluster: Some(cluster.clone()),
+            cluster: Some(cluster.to_string()),
             tasks: vec![task.clone().task_arn.unwrap()],
         })
         .sync();
     result.unwrap().tasks.unwrap()[0].clone()
 }
 
-// TODO: allowoverriding which container
-fn get_container(task_definition: &rusoto_ecs::TaskDefinition) -> rusoto_ecs::ContainerDefinition {
-    task_definition
+// Get container with matching name if one is supplied
+fn get_container(
+    task_definition: &rusoto_ecs::TaskDefinition,
+    name: Option<&str>,
+) -> rusoto_ecs::ContainerDefinition {
+    let containers = task_definition
         .clone()
         .container_definitions
-        .unwrap_or_default()[0]
-        .clone()
+        .unwrap_or_default();
+
+    match name {
+        Some(n) => containers
+            .iter()
+            .find(|c| c.name == Some(n.to_string()))
+            .unwrap()
+            .clone(),
+        None => {
+            if containers.len() != 1 {
+                panic!();
+            } else {
+                containers[0].clone()
+            }
+        }
+    }
 }
 
 fn run_task(
     client: &EcsClient,
-    cluster: &String,
-    task_definition: &rusoto_ecs::TaskDefinition,
+    cluster: &str,
     service: &rusoto_ecs::Service,
-    command: &Vec<String>,
+    command: &[String],
+    container: &rusoto_ecs::ContainerDefinition,
 ) -> rusoto_ecs::Task {
     let service = service.clone();
-    let container = get_container(&task_definition);
     let result = client
         .run_task(&rusoto_ecs::RunTaskRequest {
             cluster: Some(cluster.to_string()),
@@ -161,7 +189,7 @@ fn run_task(
             overrides: Some(rusoto_ecs::TaskOverride {
                 container_overrides: Some(vec![rusoto_ecs::ContainerOverride {
                     name: container.name.clone(),
-                    command: Some(command.clone()),
+                    command: Some(command.to_vec()),
                     ..Default::default()
                 }]),
                 ..Default::default()
@@ -197,9 +225,7 @@ fn fetch_service(
         .sync()
     {
         Ok(response) => match response.services {
-            Some(services) => {
-                return Ok(services[0].clone());
-            }
+            Some(services) => Ok(services[0].clone()),
             None => Err(format!("Could not find service {}", &service)),
         },
         Err(error) => Err(format!("Error: {:?}", &error)),
