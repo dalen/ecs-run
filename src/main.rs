@@ -122,7 +122,7 @@ fn main() {
             }
         }
         Err(error) => {
-            println!("Error: {:?}", error);
+            println!("Error: {}", error);
         }
     }
 }
@@ -167,11 +167,11 @@ fn get_container(
         Some(n) => containers
             .iter()
             .find(|c| c.name == Some(n.to_string()))
-            .unwrap()
+            .expect(format!("No container called {} found in task", &n))
             .clone(),
         None => {
             if containers.len() != 1 {
-                panic!();
+                panic!("Task has more than one container and which one to run in was not specified with the -n flag.");
             } else {
                 containers[0].clone()
             }
