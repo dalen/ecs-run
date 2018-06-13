@@ -12,7 +12,7 @@ use std::{thread, time};
 
 fn main() {
     let matches = App::new("ecs-run")
-        .version("0.1.0")
+        .version("0.1.1")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
@@ -167,7 +167,7 @@ fn get_container(
         Some(n) => containers
             .iter()
             .find(|c| c.name == Some(n.to_string()))
-            .expect(format!("No container called {} found in task", &n))
+            .expect(&format!("No container called {} found in task", &n))
             .clone(),
         None => {
             if containers.len() != 1 {

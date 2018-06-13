@@ -8,7 +8,7 @@ This can for example be used to run a rake task on a Rails service in ECS.
 ## Usage
 
 ```
-ecs-run 0.1.0
+ecs-run 0.1.1
 Erik Dalén <erik.gustav.dalen@gmail.com>
 
 USAGE:
