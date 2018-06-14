@@ -9,6 +9,7 @@ cache: cargo
 before_deploy:
 - cargo build --release
 - docker build . -t "edalen/ecs-run:${TRAVIS_TAG}"
+- docker tag "edalen/ecs-run:${TRAVIS_TAG}" "edalen/ecs-run:latest"
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 deploy:
   - provider: releases
@@ -20,7 +21,7 @@ deploy:
       repo: dalen/ecs-run
       tags: true
   - provider: script
-    script: docker push "edalen/ecs-run:${TRAVIS_TAG}"
+    script: docker push "edalen/ecs-run:${TRAVIS_TAG}" && docker push "edalen/ecs-run:latest"
     on:
       repo: dalen/ecs-run
       tags: true
