@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/dalen/ecs-run.svg?branch=master)](https://travis-ci.com/dalen/ecs-run)
+
 # ecs-run
 
 Run a task on AWS ECS and stream output.
