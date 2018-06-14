@@ -96,14 +96,13 @@ fn main() {
                 }
 
                 // Check if status has changed
-                match (&task_status.last_status, &previous_status.last_status) {
-                    (Some(ref old), Some(ref new)) => {
+                if let (Some(ref old), Some(ref new)) =
+                    (&task_status.last_status, &previous_status.last_status)
+                {
                         if old != new {
                             println!("Status: {}", new);
                         }
                     }
-                    _ => (),
-                }
                 thread::sleep(time::Duration::from_millis(500));
                 previous_status = task_status;
             }
