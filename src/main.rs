@@ -23,6 +23,14 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("ENV")
+                .help("Environment variable to pass to container, VAR=value")
+                .long("env")
+                .short("E")
+                .multiple(true)
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("CLUSTER")
                 .help("Name of cluster to run in")
                 .required(true)
@@ -45,6 +53,7 @@ fn main() {
     let cluster = matches.value_of("CLUSTER").unwrap();
     let service = matches.value_of("SERVICE").unwrap();
     let command = matches.values_of("COMMAND").unwrap();
+    let env = matches.values_of("ENV");
 
     let ecs_client = EcsClient::simple(Region::default());
     match fetch_service(&ecs_client, &cluster, &service) {
@@ -76,6 +85,7 @@ fn main() {
                 &cluster.to_string(),
                 &service,
                 &command.map(|s| s.to_string()).collect::<Vec<_>>(),
+                parse_env(&env),
                 &container,
             );
             let task_id = &task.clone()
@@ -99,10 +109,10 @@ fn main() {
                 if let (Some(ref old), Some(ref new)) =
                     (&task_status.last_status, &previous_status.last_status)
                 {
-                        if old != new {
-                            println!("Status: {}", new);
-                        }
+                    if old != new {
+                        println!("Status: {}", new);
                     }
+                }
                 thread::sleep(time::Duration::from_millis(500));
                 previous_status = task_status;
             }
@@ -124,6 +134,22 @@ fn main() {
             println!("Error: {}", error);
         }
     }
+}
+
+// Parse out the environment variables from options and return them in
+// a format that rusoto expects
+fn parse_env(
+    env_matches: &std::option::Option<clap::Values>,
+) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
+    env_matches.clone().map(|envs| {
+        envs.map(|env| {
+            let mut parts = env.splitn(1, '=');
+            rusoto_ecs::KeyValuePair {
+                name: parts.next().map(|s| s.to_string()),
+                value: parts.next().map(|s| s.to_string()),
+            }
+        }).collect()
+    })
 }
 
 // TODO: loop if there are more logs
@@ -183,6 +209,7 @@ fn run_task(
     cluster: &str,
     service: &rusoto_ecs::Service,
     command: &[String],
+    env: Option<Vec<rusoto_ecs::KeyValuePair>>,
     container: &rusoto_ecs::ContainerDefinition,
 ) -> rusoto_ecs::Task {
     let service = service.clone();
@@ -202,6 +229,7 @@ fn run_task(
                 container_overrides: Some(vec![rusoto_ecs::ContainerOverride {
                     name: container.name.clone(),
                     command: Some(command.to_vec()),
+                    environment: env,
                     ..Default::default()
                 }]),
                 ..Default::default()
