@@ -37,6 +37,8 @@ docker run -it -v ~/.aws:/root/.aws:ro -e AWS_PROFILE -e AWS_REGION -e AWS_DEFAU
 
 If you have the credentials set as environment variables you might need to forward them as well, by adding `-e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY` etc.
 
+If you run it in CodeBuild you have to pass the `AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` to give it access to the IAM role.
+
 ## Related work
 
 - [ecs-run-task](https://github.com/buildkite/ecs-run-task) - Similar, but creates a new task definition instead of reusing the one from an existing service.
