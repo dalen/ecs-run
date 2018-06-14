@@ -8,7 +8,7 @@ This can for example be used to run a rake task on a Rails service in ECS.
 ## Usage
 
 ```
-ecs-run 0.1.1
+ecs-run 0.2.0
 Erik Dalén <erik.gustav.dalen@gmail.com>
 
 USAGE:
@@ -20,6 +20,7 @@ FLAGS:
 
 OPTIONS:
     -n, --name <CONTAINER>    Name of container to run command in
+    -E, --env <ENV>...        Environment variable to pass to container, VAR=value
 
 ARGS:
     <CLUSTER>       Name of cluster to run in

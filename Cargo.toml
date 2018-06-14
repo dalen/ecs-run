@@ -1,6 +1,6 @@
 [package]
 name = "ecs-run"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Erik Dalén <erik.gustav.dalen@gmail.com>"]
 
 [dependencies]
