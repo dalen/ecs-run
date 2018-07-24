@@ -12,7 +12,7 @@ use std::{thread, time};
 
 fn main() {
     let matches = App::new("ecs-run")
-        .version("0.2.0")
+        .version("0.2.1")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
