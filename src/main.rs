@@ -176,7 +176,7 @@ fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rus
         })
         .sync();
     let tasks = result
-        .expect("Failed to fetch task definition")
+        .unwrap()
         .tasks
         .expect("Task definition response contained no tasks");
     if tasks.len() == 0 {
@@ -246,7 +246,16 @@ fn run_task(
             ..Default::default()
         })
         .sync();
-    result.unwrap().tasks.unwrap()[0].clone()
+    let tasks = result
+        .unwrap()
+        .tasks
+        .expect("run_task response contained no tasks");
+
+    if tasks.len() == 0 {
+        panic!("No tasks were started by run_task")
+    } else {
+        tasks[0].clone()
+    }
 }
 
 fn fetch_task_definition(
@@ -273,7 +282,13 @@ fn fetch_service(
         .sync()
     {
         Ok(response) => match response.services {
-            Some(services) => Ok(services[0].clone()),
+            Some(services) => {
+                if services.len() == 0 {
+                    Err(format!("Could not find service {}", &service))
+                } else {
+                    Ok(services[0].clone())
+                }
+            }
             None => Err(format!("Could not find service {}", &service)),
         },
         Err(error) => Err(format!("Error: {:?}", &error)),
