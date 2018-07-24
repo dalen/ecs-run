@@ -175,7 +175,15 @@ fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rus
             tasks: vec![task.clone().task_arn.unwrap()],
         })
         .sync();
-    result.unwrap().tasks.unwrap()[0].clone()
+    let tasks = result
+        .expect("Failed to fetch task definition")
+        .tasks
+        .expect("Task definition response contained no tasks");
+    if tasks.len() == 0 {
+        panic!("Task definition contains no tasks")
+    } else {
+        tasks[0].clone()
+    }
 }
 
 // Get container with matching name if one is supplied
