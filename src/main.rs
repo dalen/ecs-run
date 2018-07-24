@@ -169,10 +169,12 @@ fn fetch_logs(
 }
 
 fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rusoto_ecs::Task {
+    let task_arn = task.clone().task_arn.unwrap();
+
     let result = client
         .describe_tasks(&rusoto_ecs::DescribeTasksRequest {
             cluster: Some(cluster.to_string()),
-            tasks: vec![task.clone().task_arn.unwrap()],
+            tasks: vec![task_arn.clone()],
         })
         .sync();
     let tasks = result
@@ -180,7 +182,10 @@ fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rus
         .tasks
         .expect("Task definition response contained no tasks");
     if tasks.len() == 0 {
-        panic!("Task definition contains no tasks")
+        panic!(format!(
+            "No task definitions matched cluster: {} arn: {}",
+            &cluster, &task_arn
+        ))
     } else {
         tasks[0].clone()
     }
