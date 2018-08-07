@@ -35,7 +35,7 @@ ARGS:
 This can be run using Docker in the folloging way:
 
 ```
-docker run -it -v ~/.aws:/root/.aws:ro -e AWS_PROFILE -e AWS_REGION -e AWS_DEFAULT_REGION edalen/ecs-run <cluster> <service> <command>
+docker run --rm -it -v ~/.aws:/root/.aws:ro -e AWS_PROFILE -e AWS_REGION -e AWS_DEFAULT_REGION edalen/ecs-run <cluster> <service> <command>
 ```
 
 If you have the credentials set as environment variables you might need to forward them as well, by adding `-e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY` etc.
