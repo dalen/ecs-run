@@ -4,7 +4,7 @@ version = "0.2.3"
 authors = ["Erik Dalén <erik.gustav.dalen@gmail.com>"]
 
 [dependencies]
-rusoto_logs = "0.32.0"
+rusoto_logs = "0.33.1"
 rusoto_ecs = "0.32.0"
 rusoto_core = "0.32.0"
 clap = "2.32.0"
