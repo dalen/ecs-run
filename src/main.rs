@@ -99,22 +99,27 @@ fn main() {
             let mut previous_status = task.clone();
             println!("Started task {}", &task_id);
             loop {
-                let task_status = fetch_task(&ecs_client, &cluster.to_string(), &task);
+                match fetch_task(&ecs_client, &cluster.to_string(), &task) {
+                    // Task is likely not started yet, retry in a while
+                    None => thread::sleep(time::Duration::from_millis(500)),
+                    // Task was started, continue
+                    Some(task_status) => {
+                        if task_status.stopped_at != None {
+                            break;
+                        }
 
-                if task_status.stopped_at != None {
-                    break;
-                }
-
-                // Check if status has changed
-                if let (Some(ref old), Some(ref new)) =
-                    (&task_status.last_status, &previous_status.last_status)
-                {
-                    if old != new {
-                        println!("Status: {}", new);
+                        // Check if status has changed
+                        if let (Some(ref old), Some(ref new)) =
+                            (&task_status.last_status, &previous_status.last_status)
+                        {
+                            if old != new {
+                                println!("Status: {}", new);
+                            }
+                        }
+                        thread::sleep(time::Duration::from_millis(500));
+                        previous_status = task_status;
                     }
                 }
-                thread::sleep(time::Duration::from_millis(500));
-                previous_status = task_status;
             }
             println!("Task finished, fetching logs");
 
@@ -168,7 +173,11 @@ fn fetch_logs(
     result.unwrap()
 }
 
-fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rusoto_ecs::Task {
+fn fetch_task(
+    client: &EcsClient,
+    cluster: &str,
+    task: &rusoto_ecs::Task,
+) -> Option<rusoto_ecs::Task> {
     let task_arn = task.clone().task_arn.unwrap();
 
     let result = client
@@ -182,12 +191,9 @@ fn fetch_task(client: &EcsClient, cluster: &str, task: &rusoto_ecs::Task) -> rus
         .tasks
         .expect("Task definition response contained no tasks");
     if tasks.len() == 0 {
-        panic!(format!(
-            "No task definitions matched cluster: {} arn: {}",
-            &cluster, &task_arn
-        ))
+        None
     } else {
-        tasks[0].clone()
+        Some(tasks[0].clone())
     }
 }
 
