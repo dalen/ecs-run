@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate rusoto_core;
-extern crate rusoto_ecs;
-extern crate rusoto_logs;
-
 use clap::{App, Arg};
 use rusoto_core::Region;
 use rusoto_ecs::{Ecs, EcsClient};
