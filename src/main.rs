@@ -55,7 +55,7 @@ fn main() {
     let command = matches.values_of("COMMAND").unwrap();
     let env = matches.values_of("ENV");
 
-    let ecs_client = EcsClient::simple(Region::default());
+    let ecs_client = EcsClient::new(Region::default());
     match fetch_service(&ecs_client, &cluster, &service) {
         Ok(service) => {
             let task_definition = fetch_task_definition(&ecs_client, &service)
@@ -88,7 +88,8 @@ fn main() {
                 parse_env(&env),
                 &container,
             );
-            let task_id = &task.clone()
+            let task_id = &task
+                .clone()
                 .task_arn
                 .unwrap()
                 .rsplitn(2, '/')
@@ -125,7 +126,7 @@ fn main() {
 
             let log_stream_name =
                 format!("{}/{}/{}", &log_prefix, &container.name.unwrap(), &task_id);
-            let logs_client = CloudWatchLogsClient::simple(Region::from_str(&log_region).unwrap());
+            let logs_client = CloudWatchLogsClient::new(Region::from_str(&log_region).unwrap());
             let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
 
             for log in &logs.clone().events.unwrap() {
@@ -153,7 +154,8 @@ fn parse_env(
                 name: parts.next().map(|s| s.to_string()),
                 value: parts.next().map(|s| s.to_string()),
             }
-        }).collect()
+        })
+        .collect()
     })
 }
 
@@ -164,7 +166,7 @@ fn fetch_logs(
     log_stream_name: &str,
 ) -> rusoto_logs::GetLogEventsResponse {
     let result = client
-        .get_log_events(&rusoto_logs::GetLogEventsRequest {
+        .get_log_events(rusoto_logs::GetLogEventsRequest {
             log_group_name: log_group_name.to_string(),
             log_stream_name: log_stream_name.to_string(),
             ..Default::default()
@@ -181,7 +183,7 @@ fn fetch_task(
     let task_arn = task.clone().task_arn.unwrap();
 
     let result = client
-        .describe_tasks(&rusoto_ecs::DescribeTasksRequest {
+        .describe_tasks(rusoto_ecs::DescribeTasksRequest {
             cluster: Some(cluster.to_string()),
             tasks: vec![task_arn.clone()],
         })
@@ -233,7 +235,7 @@ fn run_task(
 ) -> rusoto_ecs::Task {
     let service = service.clone();
     let result = client
-        .run_task(&rusoto_ecs::RunTaskRequest {
+        .run_task(rusoto_ecs::RunTaskRequest {
             cluster: Some(cluster.to_string()),
             count: Some(1),
             launch_type: service.launch_type,
@@ -274,7 +276,7 @@ fn fetch_task_definition(
     service: &rusoto_ecs::Service,
 ) -> Result<rusoto_ecs::DescribeTaskDefinitionResponse, rusoto_ecs::DescribeTaskDefinitionError> {
     client
-        .describe_task_definition(&rusoto_ecs::DescribeTaskDefinitionRequest {
+        .describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
             task_definition: service.clone().task_definition.unwrap(),
         })
         .sync()
@@ -286,7 +288,7 @@ fn fetch_service(
     service: &str,
 ) -> Result<rusoto_ecs::Service, String> {
     match client
-        .describe_services(&rusoto_ecs::DescribeServicesRequest {
+        .describe_services(rusoto_ecs::DescribeServicesRequest {
             cluster: Some(cluster.to_string()),
             services: vec![service.to_string()],
         })
