@@ -2,7 +2,7 @@ FROM rust:1.34.2 as builder
 
 COPY . .
 
-RUN cargo install --root /usr/local
+RUN cargo install --path . --root /usr/local
 
 FROM debian:stretch-slim as runner
 
