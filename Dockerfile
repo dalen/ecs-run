@@ -1,4 +1,4 @@
-FROM rust:1.35.0 as builder
+FROM rust:1.36.0 as builder
 
 COPY . .
 
