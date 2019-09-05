@@ -181,6 +181,7 @@ fn fetch_task(
         .describe_tasks(rusoto_ecs::DescribeTasksRequest {
             cluster: Some(cluster.to_string()),
             tasks: vec![task_arn.clone()],
+            include: None
         })
         .sync();
     let tasks = result
@@ -269,10 +270,11 @@ fn run_task(
 fn fetch_task_definition(
     client: &EcsClient,
     service: &rusoto_ecs::Service,
-) -> Result<rusoto_ecs::DescribeTaskDefinitionResponse, rusoto_ecs::DescribeTaskDefinitionError> {
+) -> Result<rusoto_ecs::DescribeTaskDefinitionResponse, rusoto_core::RusotoError<rusoto_ecs::DescribeTaskDefinitionError>> {
     client
         .describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
             task_definition: service.clone().task_definition.unwrap(),
+            include: None,
         })
         .sync()
 }
@@ -286,6 +288,7 @@ fn fetch_service(
         .describe_services(rusoto_ecs::DescribeServicesRequest {
             cluster: Some(cluster.to_string()),
             services: vec![service.to_string()],
+            include: None,
         })
         .sync()
     {
