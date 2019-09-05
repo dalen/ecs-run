@@ -274,7 +274,7 @@ name = "ecs-run"
 version = "0.2.3"
 dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusoto_core 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusoto_core 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_ecs 0.40.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_logs 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
