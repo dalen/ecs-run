@@ -7,7 +7,7 @@ use std::{thread, time};
 
 fn main() {
     let matches = App::new("ecs-run")
-        .version("0.2.3")
+        .version("0.3.0")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
@@ -183,7 +183,7 @@ fn fetch_task(
         .describe_tasks(rusoto_ecs::DescribeTasksRequest {
             cluster: Some(cluster.to_string()),
             tasks: vec![task_arn.clone()],
-            include: None
+            include: None,
         })
         .sync();
     let tasks = result
@@ -204,14 +204,16 @@ fn get_exit_code(task: &rusoto_ecs::Task) -> i64 {
             for container in containers.clone() {
                 match &container.exit_code {
                     Some(exit_code) => {
-                        if *exit_code != 0 { return *exit_code }
+                        if *exit_code != 0 {
+                            return *exit_code;
+                        }
                     }
                     None => {}
                 }
-            };
+            }
             0
         }
-        None => 0
+        None => 0,
     }
 }
 
@@ -290,7 +292,10 @@ fn run_task(
 fn fetch_task_definition(
     client: &EcsClient,
     service: &rusoto_ecs::Service,
-) -> Result<rusoto_ecs::DescribeTaskDefinitionResponse, rusoto_core::RusotoError<rusoto_ecs::DescribeTaskDefinitionError>> {
+) -> Result<
+    rusoto_ecs::DescribeTaskDefinitionResponse,
+    rusoto_core::RusotoError<rusoto_ecs::DescribeTaskDefinitionError>,
+> {
     client
         .describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
             task_definition: service.clone().task_definition.unwrap(),
