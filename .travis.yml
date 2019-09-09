@@ -2,24 +2,16 @@ language: rust
 dist: trusty
 sudo: required
 services:
-- docker
+  - docker
 rust:
-- stable
+  - stable
 cache: cargo
 before_deploy:
-- cargo build --release
-- docker build . -t "edalen/ecs-run:${TRAVIS_TAG}"
-- docker tag "edalen/ecs-run:${TRAVIS_TAG}" "edalen/ecs-run:latest"
-- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - cargo build --release
+  - docker build . -t "edalen/ecs-run:${TRAVIS_TAG}"
+  - docker tag "edalen/ecs-run:${TRAVIS_TAG}" "edalen/ecs-run:latest"
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 deploy:
-  - provider: releases
-    api_key:
-      secure: Y6x6jF5bNdDcrwrnh5tLJ0tOGJFNEp0Ym8W0T4BCN/9RzFlxB8/5prW8BPrT9F3QTd0UbklsFoOUt8LdPqnsjjYo9pT+oJfD/ss48z583C+5EA5jWaY6mS4q9pw5Q7xpa0vBm0RP7TEIN45wLQ+lwNdA8+zC11vp79dzUlJ0OkgG9nyVp42RjeVThgzZ2pDpu5Y80GJFvaBvWh1EvvYaU0U62W3LxUCQ7vD8ntkUNEDOXRLJXcBzqSRA7P6lNl43V9qpEzCk71weNwdQJMjJZdukCUHcqnQsFKtVtugks+SR4W17Hk+6iDgO4ZQPRnsc0VxFQ1DGyDjVCNxPcBb1ucQQDi3SpU3B7K/tdNHFqCvZO2cDfops473Xs/Ij4KbEcr2k0NlZdB5JPfpPlD+G0K20Ln0d/TT1M5y1WPI3KK20u0VVw+iJu0HPn4LhFx/O9TVj7bxec3a5nOL8wxflXaHoD/a8wMGTi3bwoGXFHonUQEYgkt7BlpTjhs136b1Flcj5qaIcJL6a2dEB+Xd7560J5K6DB4Pjyeo0DIN7nm1t1g+xpN5xRlpqQ+hv5dgddaH+kjRSSx65YAa4sBrhs+9aSfGoFpdMQ9WQMUSNQpqCXLp9uCmP2uukw5ekOZI0ITdkJJqXh1ViGLwHaocqLtd+nM0JvHh7Nxu9gJ3VWPU=
-    file: target/release/ecs-run
-    skip_cleanup: true
-    on:
-      repo: dalen/ecs-run
-      tags: true
   - provider: script
     script: docker push "edalen/ecs-run:${TRAVIS_TAG}" && docker push "edalen/ecs-run:latest"
     on:
