@@ -130,6 +130,8 @@ fn main() {
                     None => (),
                 }
             }
+
+            std::process::exit(get_exit_code(&previous_status) as i32);
         }
         Err(error) => {
             println!("Error: {}", error);
@@ -192,6 +194,24 @@ fn fetch_task(
         None
     } else {
         Some(tasks[0].clone())
+    }
+}
+
+// Get the exit code
+fn get_exit_code(task: &rusoto_ecs::Task) -> i64 {
+    match &task.containers {
+        Some(containers) => {
+            for container in containers.clone() {
+                match &container.exit_code {
+                    Some(exit_code) => {
+                        if *exit_code != 0 { return *exit_code }
+                    }
+                    None => {}
+                }
+            };
+            0
+        }
+        None => 0
     }
 }
 
