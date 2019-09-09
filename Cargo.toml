@@ -1,6 +1,6 @@
 [package]
 name = "ecs-run"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Erik Dalén <erik.gustav.dalen@gmail.com>"]
 edition = "2018"
 
