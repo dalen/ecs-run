@@ -141,12 +141,10 @@ fn main() {
 
 // Parse out the environment variables from options and return them in
 // a format that rusoto expects
-fn parse_env(
-    env_matches: &std::option::Option<clap::Values>,
-) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
+fn parse_env(env_matches: &Option<clap::Values>) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
     env_matches.clone().map(|envs| {
         envs.map(|env| {
-            let mut parts = env.splitn(1, '=');
+            let mut parts = env.splitn(2, '=');
             rusoto_ecs::KeyValuePair {
                 name: parts.next().map(|s| s.to_string()),
                 value: parts.next().map(|s| s.to_string()),
@@ -328,5 +326,32 @@ fn fetch_service(
             None => Err(format!("Could not find service {}", &service)),
         },
         Err(error) => Err(format!("Error: {:?}", &error)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_env() {
+        let m = App::new("myapp")
+            .arg(
+                Arg::with_name("env")
+                    .short("E")
+                    .multiple(true)
+                    .takes_value(true),
+            )
+            .get_matches_from(vec!["myapp", "-E", "FOO=bar"]);
+
+        let values = m.values_of("env");
+
+        assert_eq!(
+            parse_env(&values),
+            Some(vec![rusoto_ecs::KeyValuePair {
+                name: Some(String::from("FOO")),
+                value: Some(String::from("bar")),
+            }])
+        )
     }
 }
