@@ -188,7 +188,7 @@ fn fetch_task(
         .unwrap()
         .tasks
         .expect("Task definition response contained no tasks");
-    if tasks.len() == 0 {
+    if tasks.is_empty() {
         None
     } else {
         Some(tasks[0].clone())
@@ -229,7 +229,7 @@ fn get_container(
         Some(n) => containers
             .iter()
             .find(|c| c.name == Some(n.to_string()))
-            .expect(&format!("No container called {} found in task", &n))
+            .unwrap_or_else(|| panic!("No container called {} found in task", &n))
             .clone(),
         None => {
             if containers.len() != 1 {
@@ -280,7 +280,7 @@ fn run_task(
         .tasks
         .expect("run_task response contained no tasks");
 
-    if tasks.len() == 0 {
+    if tasks.is_empty() {
         panic!("No tasks were started by run_task")
     } else {
         tasks[0].clone()
@@ -317,7 +317,7 @@ fn fetch_service(
     {
         Ok(response) => match response.services {
             Some(services) => {
-                if services.len() == 0 {
+                if services.is_empty() {
                     Err(format!("Could not find service {}", &service))
                 } else {
                     Ok(services[0].clone())
