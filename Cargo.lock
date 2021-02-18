@@ -1108,13 +1108,13 @@ dependencies = [
 
 [[package]]
 name = "rusoto_ecs"
-version = "0.40.0"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05e4eb614b8fbc4f6a17d33cf2bc455256c99c954c6b40117b4f2e0b57706081"
+checksum = "f4e2b14019525016c8954c73ec2f080df22673276f859414fd30de7bef83adff"
 dependencies = [
  "bytes",
  "futures",
- "rusoto_core 0.40.0",
+ "rusoto_core 0.41.0",
  "serde",
  "serde_derive",
  "serde_json",
