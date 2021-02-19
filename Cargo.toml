@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 rusoto_logs = "0.42.0"
 rusoto_ecs = "0.42.0"
-rusoto_core = "0.42.0"
+rusoto_core = "0.46.0"
 clap = "2.33.3"
