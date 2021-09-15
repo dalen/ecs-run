@@ -2,7 +2,7 @@
 name = "ecs-run"
 version = "0.3.1"
 authors = ["Erik Dalén <erik.gustav.dalen@gmail.com>"]
-edition = "2020"
+edition = "2018"
 
 [dependencies]
 rusoto_logs = "0.47.0"
