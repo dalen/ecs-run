@@ -1,15 +1,12 @@
-FROM rust:1.50.0 as builder
+FROM rust:1.62.0 as builder
 
 COPY . .
 
-RUN cargo install --path . --root /usr/local
+RUN cargo install --path . --root /usr/local --locked
 
-FROM debian:stretch-slim as runner
-
-RUN apt-get update && \
-  DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/*
+FROM debian:bullseye-slim
+RUN apt-get update &&  \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates
 
 COPY --from=builder /usr/local/bin/ecs-run /usr/local/bin/ecs-run
 

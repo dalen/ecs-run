@@ -1,4 +1,5 @@
 use clap::{App, Arg};
+use tokio::runtime::Runtime;
 use rusoto_core::Region;
 use rusoto_ecs::{Ecs, EcsClient};
 use rusoto_logs::{CloudWatchLogs, CloudWatchLogsClient};
@@ -7,7 +8,7 @@ use std::{thread, time};
 
 fn main() {
     let matches = App::new("ecs-run")
-        .version("0.3.0")
+        .version("0.4.0")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
@@ -37,6 +38,13 @@ fn main() {
                 .required(true)
                 .index(2),
         )
+            .arg(
+            Arg::with_name("MEMORY")
+                .long("memory")
+                .help("Overrides memory value for task and container")
+                .required(false)
+                .default_value("16384")
+        )
         .arg(
             Arg::with_name("COMMAND")
                 .help("Command to run")
@@ -48,6 +56,7 @@ fn main() {
     let cluster = matches.value_of("CLUSTER").unwrap();
     let service = matches.value_of("SERVICE").unwrap();
     let command = matches.values_of("COMMAND").unwrap();
+    let memory = matches.value_of("MEMORY").unwrap().parse::<i64>().unwrap();
     let env = matches.values_of("ENV");
 
     let ecs_client = EcsClient::new(Region::default());
@@ -82,6 +91,7 @@ fn main() {
                 &command.map(|s| s.to_string()).collect::<Vec<_>>(),
                 parse_env(&env),
                 &container,
+                memory,
             );
             let task_id = &task
                 .clone()
@@ -160,14 +170,14 @@ fn fetch_logs(
     log_group_name: &str,
     log_stream_name: &str,
 ) -> rusoto_logs::GetLogEventsResponse {
+    let runtime = Runtime::new().unwrap();
     let result = client
         .get_log_events(rusoto_logs::GetLogEventsRequest {
             log_group_name: log_group_name.to_string(),
             log_stream_name: log_stream_name.to_string(),
             ..Default::default()
-        })
-        .sync();
-    result.unwrap()
+        });
+    runtime.block_on(result).unwrap()
 }
 
 fn fetch_task(
@@ -176,14 +186,16 @@ fn fetch_task(
     task: &rusoto_ecs::Task,
 ) -> Option<rusoto_ecs::Task> {
     let task_arn = task.clone().task_arn.unwrap();
+    let runtime = Runtime::new().unwrap();
 
-    let result = client
-        .describe_tasks(rusoto_ecs::DescribeTasksRequest {
+    let result = runtime.block_on(
+        client.describe_tasks(rusoto_ecs::DescribeTasksRequest {
             cluster: Some(cluster.to_string()),
             tasks: vec![task_arn.clone()],
             include: None,
         })
-        .sync();
+    );
+
     let tasks = result
         .unwrap()
         .tasks
@@ -248,9 +260,11 @@ fn run_task(
     command: &[String],
     env: Option<Vec<rusoto_ecs::KeyValuePair>>,
     container: &rusoto_ecs::ContainerDefinition,
+    memory: i64,
 ) -> rusoto_ecs::Task {
+    let runtime = Runtime::new().unwrap();
     let service = service.clone();
-    let result = client
+    let result = runtime.block_on(client
         .run_task(rusoto_ecs::RunTaskRequest {
             cluster: Some(cluster.to_string()),
             count: Some(1),
@@ -267,14 +281,15 @@ fn run_task(
                     name: container.name.clone(),
                     command: Some(command.to_vec()),
                     environment: env,
+                    memory: Option::from(memory - 512), // Leave some memory for other containers
                     ..Default::default()
                 }]),
+                memory: Option::from(memory.to_string()),
                 ..Default::default()
             }),
             started_by: Some("ecs-run".to_string()),
             ..Default::default()
-        })
-        .sync();
+        }));
     let tasks = result
         .unwrap()
         .tasks
@@ -294,12 +309,14 @@ fn fetch_task_definition(
     rusoto_ecs::DescribeTaskDefinitionResponse,
     rusoto_core::RusotoError<rusoto_ecs::DescribeTaskDefinitionError>,
 > {
-    client
-        .describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
+    let runtime = Runtime::new().unwrap();
+    runtime.block_on(
+        client.
+            describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
             task_definition: service.clone().task_definition.unwrap(),
             include: None,
         })
-        .sync()
+    )
 }
 
 fn fetch_service(
@@ -307,13 +324,15 @@ fn fetch_service(
     cluster: &str,
     service: &str,
 ) -> Result<rusoto_ecs::Service, String> {
-    match client
+    let runtime = Runtime::new().unwrap();
+    match runtime.block_on(
+        client
         .describe_services(rusoto_ecs::DescribeServicesRequest {
             cluster: Some(cluster.to_string()),
             services: vec![service.to_string()],
             include: None,
         })
-        .sync()
+    )
     {
         Ok(response) => match response.services {
             Some(services) => {
