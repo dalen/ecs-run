@@ -6,20 +6,9 @@ updates:
     interval: daily
     time: "04:00"
   open-pull-requests-limit: 10
-  ignore:
-  - dependency-name: rusoto_ecs
-    versions:
-    - 0.42.0
-  - dependency-name: rusoto_logs
-    versions:
-    - 0.42.0
 - package-ecosystem: docker
   directory: "/"
   schedule:
     interval: daily
     time: "04:00"
   open-pull-requests-limit: 10
-  ignore:
-  - dependency-name: rust
-    versions:
-    - 1.49.0
