@@ -15,14 +15,14 @@ fn main() {
             Arg::with_name("CONTAINER")
                 .help("Name of container to run command in")
                 .long("name")
-                .short("n")
+                .short('n')
                 .takes_value(true),
         )
         .arg(
             Arg::with_name("ENV")
                 .help("Environment variable to pass to container, VAR=value")
                 .long("env")
-                .short("E")
+                .short('E')
                 .multiple(true)
                 .takes_value(true),
         )
@@ -38,26 +38,45 @@ fn main() {
                 .required(true)
                 .index(2),
         )
-            .arg(
-            Arg::with_name("MEMORY")
-                .long("memory")
-                .help("Overrides memory value for task and container")
-                .required(false)
-                .default_value("16384")
-        )
         .arg(
             Arg::with_name("COMMAND")
                 .help("Command to run")
                 .required(true)
-                .multiple(true),
+                .multiple(true)
+                .index(3),
+        )
+        .arg(
+            Arg::with_name("MEMORY")
+                .long("memory")
+                .short('m')
+                .help("Overrides memory value for task and container, Memory value must be an increment in range <512, 30720> and be an increment of 1024")
+                .required(false)
+                .takes_value(true)
         )
         .get_matches();
 
     let cluster = matches.value_of("CLUSTER").unwrap();
     let service = matches.value_of("SERVICE").unwrap();
     let command = matches.values_of("COMMAND").unwrap();
-    let memory = matches.value_of("MEMORY").unwrap().parse::<i64>().unwrap();
+
     let env = matches.values_of("ENV");
+    let raw_memory =  matches.value_of("MEMORY");
+    let memory: Option<i64>;
+
+    if raw_memory.is_some() {
+        memory = Option::from(raw_memory.unwrap().parse::<i64>().unwrap());
+    } else {
+        memory = None;
+    }
+
+    let container_name = matches.value_of("CONTAINER").unwrap();
+
+    println!(
+        "Running task: cluster: {cluster}, service: {service}, \
+        container: {container_name}, memory:{memory}",
+        container_name=container_name,
+        memory = if raw_memory.is_some() { raw_memory.unwrap() } else { "None" }
+    );
 
     let ecs_client = EcsClient::new(Region::default());
     match fetch_service(&ecs_client, &cluster, &service) {
@@ -66,7 +85,7 @@ fn main() {
                 .unwrap()
                 .task_definition
                 .unwrap();
-            let container = get_container(&task_definition, matches.value_of("CONTAINER"));
+            let container = get_container(&task_definition, Some(container_name));
 
             let log_options = container
                 .clone()
@@ -260,10 +279,21 @@ fn run_task(
     command: &[String],
     env: Option<Vec<rusoto_ecs::KeyValuePair>>,
     container: &rusoto_ecs::ContainerDefinition,
-    memory: i64,
+    memory: Option<i64>,
 ) -> rusoto_ecs::Task {
     let runtime = Runtime::new().unwrap();
     let service = service.clone();
+    let container_memory: Option<i64>;
+    let task_memory: Option<String>;
+
+    if memory.is_some() {
+        let memory = memory.unwrap();
+        container_memory = Option::from(memory - 512);
+        task_memory = Option::from(memory.to_string());
+    } else {
+        container_memory = None;
+        task_memory = None;
+    }
     let result = runtime.block_on(client
         .run_task(rusoto_ecs::RunTaskRequest {
             cluster: Some(cluster.to_string()),
@@ -281,10 +311,10 @@ fn run_task(
                     name: container.name.clone(),
                     command: Some(command.to_vec()),
                     environment: env,
-                    memory: Option::from(memory - 512), // Leave some memory for other containers
+                    memory: container_memory, // Leave some memory for other containers
                     ..Default::default()
                 }]),
-                memory: Option::from(memory.to_string()),
+                memory: task_memory,
                 ..Default::default()
             }),
             started_by: Some("ecs-run".to_string()),
