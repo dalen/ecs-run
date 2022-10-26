@@ -12,6 +12,12 @@ fn main() {
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
         .setting(clap::AppSettings::TrailingVarArg)
         .arg(
+            Arg::with_name("VERBOSE")
+                .short('v')
+                .long("verbose")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
             Arg::with_name("CONTAINER")
                 .help("Name of container to run command in")
                 .long("name")
@@ -60,6 +66,7 @@ fn main() {
     let command = matches.values_of("COMMAND").unwrap();
 
     let env = matches.values_of("ENV");
+    let verbose = matches.value_of("VERBOSE").unwrap();
     let raw_memory =  matches.value_of("MEMORY");
     let memory: Option<i64>;
 
@@ -148,9 +155,21 @@ fn main() {
             }
             println!("Task finished, fetching logs");
 
+            if verbose {
+                println!("Creating logs client in region: {}", &log_region);
+            }
+
+            let logs_client = CloudWatchLogsClient::new(Region::from_str(&log_region).unwrap());
             let log_stream_name =
                 format!("{}/{}/{}", &log_prefix, &container.name.unwrap(), &task_id);
-            let logs_client = CloudWatchLogsClient::new(Region::from_str(&log_region).unwrap());
+
+            if verbose {
+                println!(
+                    "Fetching logs: group: {}, stream: {}",
+                    &log_group.to_string(),
+                    &log_stream_name.to_string()
+                );
+            }
             let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
 
             for log in &logs.clone().events.unwrap() {
@@ -190,6 +209,7 @@ fn fetch_logs(
     log_stream_name: &str,
 ) -> rusoto_logs::GetLogEventsResponse {
     let runtime = Runtime::new().unwrap();
+
     let result = client
         .get_log_events(rusoto_logs::GetLogEventsRequest {
             log_group_name: log_group_name.to_string(),
