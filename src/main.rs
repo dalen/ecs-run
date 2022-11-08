@@ -66,7 +66,7 @@ fn main() {
     let command = matches.values_of("COMMAND").unwrap();
 
     let env = matches.values_of("ENV");
-    let verbose = matches.value_of("VERBOSE").unwrap();
+    let verbose = matches.is_present("VERBOSE");
     let raw_memory =  matches.value_of("MEMORY");
     let memory: Option<i64>;
 
