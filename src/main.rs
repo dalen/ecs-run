@@ -407,7 +407,7 @@ mod tests {
         let m = App::new("myapp")
             .arg(
                 Arg::with_name("env")
-                    .short("E")
+                    .short('E')
                     .multiple(true)
                     .takes_value(true),
             )
