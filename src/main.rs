@@ -100,15 +100,6 @@ fn main() {
                 .unwrap()
                 .options
                 .unwrap();
-            let log_group = log_options
-                .get("awslogs-group")
-                .expect("No log group configured");
-            let log_region = log_options
-                .get("awslogs-region")
-                .expect("No log region configured");
-            let log_prefix = log_options
-                .get("awslogs-stream-prefix")
-                .expect("No log stream prefix configured");
 
             let task = run_task(
                 &ecs_client,
@@ -155,28 +146,43 @@ fn main() {
             }
             println!("Task finished, fetching logs");
 
-            if verbose {
-                println!("Creating logs client in region: {}", &log_region);
-            }
+            if !log_options.get("awslogs-group").is_none() {
 
-            let logs_client = CloudWatchLogsClient::new(Region::from_str(&log_region).unwrap());
-            let log_stream_name =
-                format!("{}/{}/{}", &log_prefix, &container.name.unwrap(), &task_id);
+                let log_group = log_options
+                    .get("awslogs-group")
+                    .expect("No log group configured");
+                let log_region = log_options
+                    .get("awslogs-region")
+                    .expect("No log region configured");
+                let log_prefix = log_options
+                    .get("awslogs-stream-prefix")
+                    .expect("No log stream prefix configured");
 
-            if verbose {
-                println!(
-                    "Fetching logs: group: {}, stream: {}",
-                    &log_group.to_string(),
-                    &log_stream_name.to_string()
-                );
-            }
-            let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
-
-            for log in &logs.clone().events.unwrap() {
-                match &log.message {
-                    Some(message) => println!("{}", &message),
-                    None => (),
+                if verbose {
+                    println!("Creating logs client in region: {}", &log_region);
                 }
+
+                let logs_client = CloudWatchLogsClient::new(Region::from_str(&log_region).unwrap());
+                let log_stream_name =
+                    format!("{}/{}/{}", &log_prefix, &container.name.unwrap(), &task_id);
+
+                if verbose {
+                    println!(
+                        "Fetching logs: group: {}, stream: {}",
+                        &log_group.to_string(),
+                        &log_stream_name.to_string()
+                    );
+                }
+                let logs = fetch_logs(&logs_client, &log_group, &log_stream_name);
+
+                for log in &logs.clone().events.unwrap() {
+                    match &log.message {
+                        Some(message) => println!("{}", &message),
+                        None => (),
+                    }
+                }
+            } else {
+                println!("No Cloudwatch log configuration provided");
             }
 
             std::process::exit(get_exit_code(&previous_status) as i32);
