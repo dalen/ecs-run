@@ -1,11 +1,11 @@
-name: Rust
+name: Publish Docker image
 
 on:
   push:
     branches:
       - master
     tags:
-      - "*"
+      - '*'
 
 jobs:
   deploy:
