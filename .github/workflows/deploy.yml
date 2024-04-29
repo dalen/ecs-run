@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Publish to Registry
-        uses: elgohr/Publish-Docker-Github-Action@2.6
+        uses: elgohr/Publish-Docker-Github-Action@3.04
         with:
           name: edalen/ecs-run
           username: ${{ secrets.DOCKER_USERNAME }}
