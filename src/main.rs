@@ -1,10 +1,10 @@
 use clap::{App, Arg};
-use tokio::runtime::Runtime;
 use rusoto_core::Region;
 use rusoto_ecs::{Ecs, EcsClient};
 use rusoto_logs::{CloudWatchLogs, CloudWatchLogsClient};
 use std::str::FromStr;
 use std::{thread, time};
+use tokio::runtime::Runtime;
 
 fn main() {
     let matches = App::new("ecs-run")
@@ -67,7 +67,7 @@ fn main() {
 
     let env = matches.values_of("ENV");
     let verbose = matches.is_present("VERBOSE");
-    let raw_memory =  matches.value_of("MEMORY");
+    let raw_memory = matches.value_of("MEMORY");
     let memory: Option<i64>;
 
     if raw_memory.is_some() {
@@ -81,8 +81,12 @@ fn main() {
     println!(
         "Running task: cluster: {cluster}, service: {service}, \
         container: {container_name}, memory:{memory}",
-        container_name=container_name,
-        memory = if raw_memory.is_some() { raw_memory.unwrap() } else { "None" }
+        container_name = container_name,
+        memory = if raw_memory.is_some() {
+            raw_memory.unwrap()
+        } else {
+            "None"
+        }
     );
 
     let ecs_client = EcsClient::new(Region::default());
@@ -147,7 +151,6 @@ fn main() {
             println!("Task finished, fetching logs");
 
             if !log_options.get("awslogs-group").is_none() {
-
                 let log_group = log_options
                     .get("awslogs-group")
                     .expect("No log group configured");
@@ -216,12 +219,11 @@ fn fetch_logs(
 ) -> rusoto_logs::GetLogEventsResponse {
     let runtime = Runtime::new().unwrap();
 
-    let result = client
-        .get_log_events(rusoto_logs::GetLogEventsRequest {
-            log_group_name: log_group_name.to_string(),
-            log_stream_name: log_stream_name.to_string(),
-            ..Default::default()
-        });
+    let result = client.get_log_events(rusoto_logs::GetLogEventsRequest {
+        log_group_name: log_group_name.to_string(),
+        log_stream_name: log_stream_name.to_string(),
+        ..Default::default()
+    });
     runtime.block_on(result).unwrap()
 }
 
@@ -233,13 +235,11 @@ fn fetch_task(
     let task_arn = task.clone().task_arn.unwrap();
     let runtime = Runtime::new().unwrap();
 
-    let result = runtime.block_on(
-        client.describe_tasks(rusoto_ecs::DescribeTasksRequest {
-            cluster: Some(cluster.to_string()),
-            tasks: vec![task_arn.clone()],
-            include: None,
-        })
-    );
+    let result = runtime.block_on(client.describe_tasks(rusoto_ecs::DescribeTasksRequest {
+        cluster: Some(cluster.to_string()),
+        tasks: vec![task_arn.clone()],
+        include: None,
+    }));
 
     let tasks = result
         .unwrap()
@@ -320,8 +320,8 @@ fn run_task(
         container_memory = None;
         task_memory = None;
     }
-    let result = runtime.block_on(client
-        .run_task(rusoto_ecs::RunTaskRequest {
+    let result = runtime.block_on(
+        client.run_task(rusoto_ecs::RunTaskRequest {
             cluster: Some(cluster.to_string()),
             count: Some(1),
             launch_type: service.launch_type,
@@ -345,7 +345,8 @@ fn run_task(
             }),
             started_by: Some("ecs-run".to_string()),
             ..Default::default()
-        }));
+        }),
+    );
     let tasks = result
         .unwrap()
         .tasks
@@ -367,11 +368,10 @@ fn fetch_task_definition(
 > {
     let runtime = Runtime::new().unwrap();
     runtime.block_on(
-        client.
-            describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
+        client.describe_task_definition(rusoto_ecs::DescribeTaskDefinitionRequest {
             task_definition: service.clone().task_definition.unwrap(),
             include: None,
-        })
+        }),
     )
 }
 
@@ -382,14 +382,12 @@ fn fetch_service(
 ) -> Result<rusoto_ecs::Service, String> {
     let runtime = Runtime::new().unwrap();
     match runtime.block_on(
-        client
-        .describe_services(rusoto_ecs::DescribeServicesRequest {
+        client.describe_services(rusoto_ecs::DescribeServicesRequest {
             cluster: Some(cluster.to_string()),
             services: vec![service.to_string()],
             include: None,
-        })
-    )
-    {
+        }),
+    ) {
         Ok(response) => match response.services {
             Some(services) => {
                 if services.is_empty() {
