@@ -5,6 +5,7 @@ authors = ["Erik Dalén <erik.gustav.dalen@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 rusoto_logs = "0.48.0"
 rusoto_ecs = "0.48.0"
 rusoto_core = "0.48.0"
