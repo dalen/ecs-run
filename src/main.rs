@@ -76,12 +76,12 @@ fn main() {
         memory = None;
     }
 
-    let container_name = matches.get_one::<String>("CONTAINER").unwrap();
+    let container_name = matches.get_one::<String>("CONTAINER").map(String::as_str);
 
     println!(
         "Running task: cluster: {cluster}, service: {service}, \
         container: {container_name}, memory:{memory}",
-        container_name = container_name,
+        container_name = container_name.unwrap_or("None"),
         memory = if raw_memory.is_some() {
             raw_memory.unwrap()
         } else {
@@ -96,7 +96,7 @@ fn main() {
                 .unwrap()
                 .task_definition
                 .unwrap();
-            let container = get_container(&task_definition, Some(container_name));
+            let container = get_container(&task_definition, container_name);
 
             let log_options = container
                 .clone()
@@ -110,7 +110,7 @@ fn main() {
                 &cluster.to_string(),
                 &service,
                 &command.map(|s| s.to_string()).collect::<Vec<_>>(),
-                parse_env(&env),
+                parse_env(env),
                 &container,
                 memory,
             );
@@ -198,9 +198,9 @@ fn main() {
 
 // Parse out the environment variables from options and return them in
 // a format that rusoto expects
-fn parse_env(env_matches: &Option<ValuesRef<'_, String>>) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
-    env_matches.as_ref().map(|envs| {
-        envs.clone().map(|env| {
+fn parse_env(env_matches: Option<ValuesRef<'_, String>>) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
+    env_matches.map(|envs| {
+        envs.map(|env| {
             let mut parts = env.splitn(2, '=');
             rusoto_ecs::KeyValuePair {
                 name: parts.next().map(|s| s.to_string()),
@@ -420,7 +420,7 @@ mod tests {
         let values = m.get_many::<String>("env");
 
         assert_eq!(
-            parse_env(&values),
+            parse_env(values),
             Some(vec![rusoto_ecs::KeyValuePair {
                 name: Some(String::from("FOO")),
                 value: Some(String::from("bar")),
