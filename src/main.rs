@@ -1,4 +1,4 @@
-use clap::{App, Arg};
+use clap::{parser::ValuesRef, Arg, ArgAction, Command};
 use rusoto_core::Region;
 use rusoto_ecs::{Ecs, EcsClient};
 use rusoto_logs::{CloudWatchLogs, CloudWatchLogsClient};
@@ -7,67 +7,67 @@ use std::{thread, time};
 use tokio::runtime::Runtime;
 
 fn main() {
-    let matches = App::new("ecs-run")
+    let matches = Command::new("ecs-run")
         .version("0.4.0")
         .author("Erik Dalén <erik.gustav.dalen@gmail.com>")
-        .setting(clap::AppSettings::TrailingVarArg)
+        .trailing_var_arg(true)
         .arg(
-            Arg::with_name("VERBOSE")
+            Arg::new("VERBOSE")
                 .short('v')
                 .long("verbose")
-                .action(clap::ArgAction::SetTrue),
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::with_name("CONTAINER")
+            Arg::new("CONTAINER")
                 .help("Name of container to run command in")
                 .long("name")
                 .short('n')
-                .takes_value(true),
+                .num_args(1),
         )
         .arg(
-            Arg::with_name("ENV")
+            Arg::new("ENV")
                 .help("Environment variable to pass to container, VAR=value")
                 .long("env")
                 .short('E')
-                .multiple(true)
-                .takes_value(true),
+                .action(ArgAction::Append)
+                .num_args(1),
         )
         .arg(
-            Arg::with_name("CLUSTER")
+            Arg::new("CLUSTER")
                 .help("Name of cluster to run in")
                 .required(true)
                 .index(1),
         )
         .arg(
-            Arg::with_name("SERVICE")
+            Arg::new("SERVICE")
                 .help("Service to base task on")
                 .required(true)
                 .index(2),
         )
         .arg(
-            Arg::with_name("COMMAND")
+            Arg::new("COMMAND")
                 .help("Command to run")
                 .required(true)
-                .multiple(true)
+                .num_args(1..)
                 .index(3),
         )
         .arg(
-            Arg::with_name("MEMORY")
+            Arg::new("MEMORY")
                 .long("memory")
                 .short('m')
                 .help("Overrides memory value for task and container, Memory value must be an increment in range <512, 30720> and be an increment of 1024")
                 .required(false)
-                .takes_value(true)
+                .num_args(1),
         )
         .get_matches();
 
-    let cluster = matches.value_of("CLUSTER").unwrap();
-    let service = matches.value_of("SERVICE").unwrap();
-    let command = matches.values_of("COMMAND").unwrap();
+    let cluster = matches.get_one::<String>("CLUSTER").unwrap();
+    let service = matches.get_one::<String>("SERVICE").unwrap();
+    let command = matches.get_many::<String>("COMMAND").unwrap();
 
-    let env = matches.values_of("ENV");
-    let verbose = matches.is_present("VERBOSE");
-    let raw_memory = matches.value_of("MEMORY");
+    let env = matches.get_many::<String>("ENV");
+    let verbose = matches.get_flag("VERBOSE");
+    let raw_memory = matches.get_one::<String>("MEMORY");
     let memory: Option<i64>;
 
     if raw_memory.is_some() {
@@ -76,12 +76,12 @@ fn main() {
         memory = None;
     }
 
-    let container_name = matches.value_of("CONTAINER").unwrap();
+    let container_name = matches.get_one::<String>("CONTAINER").map(String::as_str);
 
     println!(
         "Running task: cluster: {cluster}, service: {service}, \
         container: {container_name}, memory:{memory}",
-        container_name = container_name,
+        container_name = container_name.unwrap_or("None"),
         memory = if raw_memory.is_some() {
             raw_memory.unwrap()
         } else {
@@ -96,7 +96,7 @@ fn main() {
                 .unwrap()
                 .task_definition
                 .unwrap();
-            let container = get_container(&task_definition, Some(container_name));
+            let container = get_container(&task_definition, container_name);
 
             let log_options = container
                 .clone()
@@ -110,7 +110,7 @@ fn main() {
                 &cluster.to_string(),
                 &service,
                 &command.map(|s| s.to_string()).collect::<Vec<_>>(),
-                parse_env(&env),
+                parse_env(env),
                 &container,
                 memory,
             );
@@ -198,8 +198,8 @@ fn main() {
 
 // Parse out the environment variables from options and return them in
 // a format that rusoto expects
-fn parse_env(env_matches: &Option<clap::Values>) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
-    env_matches.clone().map(|envs| {
+fn parse_env(env_matches: Option<ValuesRef<'_, String>>) -> Option<Vec<rusoto_ecs::KeyValuePair>> {
+    env_matches.map(|envs| {
         envs.map(|env| {
             let mut parts = env.splitn(2, '=');
             rusoto_ecs::KeyValuePair {
@@ -408,19 +408,19 @@ mod tests {
 
     #[test]
     fn test_parse_env() {
-        let m = App::new("myapp")
+        let m = Command::new("myapp")
             .arg(
-                Arg::with_name("env")
+                Arg::new("env")
                     .short('E')
-                    .multiple(true)
-                    .takes_value(true),
+                    .action(ArgAction::Append)
+                    .num_args(1),
             )
             .get_matches_from(vec!["myapp", "-E", "FOO=bar"]);
 
-        let values = m.values_of("env");
+        let values = m.get_many::<String>("env");
 
         assert_eq!(
-            parse_env(&values),
+            parse_env(values),
             Some(vec![rusoto_ecs::KeyValuePair {
                 name: Some(String::from("FOO")),
                 value: Some(String::from("bar")),
